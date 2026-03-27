@@ -33,18 +33,25 @@ Future<List<Map<String, dynamic>>> _findExistingStringFolders() async {
   try {
     await for (final entity in currentDir.list()) {
       if (entity is Directory) {
-        final folderName = entity.path.split('/').last;
+        final folderName = entity.path.replaceAll('\\', '/').split('/').last;
 
-        // Skip system and IDE folders
+        // Skip system, IDE, and common project folders
         if (folderName.startsWith('.') ||
             folderName == 'build' ||
             folderName == 'node_modules' ||
             folderName == 'android' ||
-            folderName == 'ios') {
+            folderName == 'ios' ||
+            folderName == 'web' ||
+            folderName == 'windows' ||
+            folderName == 'macos' ||
+            folderName == 'linux' ||
+            folderName == 'test' ||
+            folderName == 'integration_test' ||
+            folderName == '.dart_tool') {
           continue;
         }
 
-        // Check if folder contains CSV or JSON files (indicating it's a strings folder)
+        // Check if folder contains CSV or JSON files (any localization files)
         final files = await entity.list().toList();
         final hasStringFiles = files.any((file) =>
             file is File &&
@@ -125,10 +132,21 @@ bool _warnAboutExistingFolder(
   print('');
 
   stdout
-      .write('Press Enter to continue, or Ctrl+C to choose a different name: ');
-  stdin.readLineSync(); // Read but don't use - just wait for Enter
-
-  // Any input (including empty) means continue, Ctrl+C will exit
+      .write('Type \'y\' and press Enter to continue, or Ctrl+C to choose a different name: ');
+  
+  try {
+    final input = stdin.readLineSync()?.trim().toLowerCase();
+    // Only continue if user types 'y', otherwise wait
+    while (input != 'y') {
+      stdout.write('Please type \'y\' and press Enter to continue: ');
+      final newInput = stdin.readLineSync()?.trim().toLowerCase();
+      if (newInput == 'y') break;
+    }
+  } catch (e) {
+    // If input fails, just continue
+    print(' (auto-continuing due to input error)');
+  }
+  
   return true;
 }
 
@@ -155,13 +173,19 @@ int _showMenu(String folderName, int existingCount, int newCount) {
   print('   → (Not recommended - you\'ll lose work!)');
   print('');
 
-  stdout.write('Enter choice (1/2/3): ');
+  stdout.write('Type your choice (1/2/3) and press Enter: ');
 
-  String? choice = stdin.readLineSync();
+  String? choice;
+  try {
+    choice = stdin.readLineSync()?.trim();
+  } catch (e) {
+    print('⚠️  Input error, using Smart Merge (option 1) - default choice');
+    return 1;
+  }
 
   // Handle empty input - default to option 1
   if (choice == null || choice.trim().isEmpty) {
-    print('⚠️  Using Smart Merge (option 1) - default choice');
+    print('⚠️  No input detected, using Smart Merge (option 1) - default choice');
     return 1;
   }
 
@@ -182,7 +206,14 @@ int _showMenu(String folderName, int existingCount, int newCount) {
 /// Get version name for new folder
 String _getVersionName(String baseFolderName) {
   stdout.write('Enter version name (default: v2): ');
-  String? version = stdin.readLineSync();
+  String? version;
+  
+  try {
+    version = stdin.readLineSync();
+  } catch (e) {
+    print('⚠️  Input error, using v2 - default version name');
+    return '${baseFolderName}_v2';
+  }
 
   // Handle empty input - default to v2
   if (version == null || version.trim().isEmpty) {
@@ -233,11 +264,37 @@ void main(List<String> args) async {
   // --- ASK FOR PROJECT NAME ---
   print('Enter project name (default: hardcoded_strings):');
   stdout.write('Project name: ');
-  String? projectName = stdin.readLineSync()?.trim();
+  
+  String? projectName;
+  try {
+    // Try to read input normally
+    final input = stdin.readLineSync();
+    
+    // Handle different types of "empty" input across Windows terminals
+    if (input == null || input.isEmpty) {
+      // Empty or null input - treat as default
+      projectName = 'hardcoded_strings';
+      print('📝 Using default: hardcoded_strings');
+    } else {
+      // Trim whitespace and newlines
+      projectName = input.trim();
+      
+      // Handle Windows-specific empty inputs
+      if (projectName.isEmpty || 
+          projectName == '\r' || 
+          projectName == '\n' || 
+          projectName == '\r\n' ||
+          projectName.length == 0) {
+        projectName = 'hardcoded_strings';
+        print('📝 Using default: hardcoded_strings');
+      }
+    }
+  } catch (e) {
+    print('⚠️  Input error, using default name');
+    projectName = 'hardcoded_strings';
+  }
 
-  final baseName = (projectName != null && projectName.isNotEmpty)
-      ? projectName
-      : 'hardcoded_strings';
+  final baseName = projectName;
 
   final folderName = '${baseName}_strings';
   final fileName = baseName;
@@ -289,13 +346,19 @@ void main(List<String> args) async {
   print('1. JSON only');
   print('2. CSV only');
   print('3. Both JSON and CSV');
-  stdout.write('Enter 1, 2, or 3: ');
+  stdout.write('Type your choice (1/2/3) and press Enter: ');
 
-  String? formatChoice = stdin.readLineSync();
+  String? formatChoice;
+  try {
+    formatChoice = stdin.readLineSync()?.trim();
+  } catch (e) {
+    print('⚠️  Input error, using both formats (JSON + CSV) - default choice');
+    return;
+  }
 
   // Handle empty input - default to both formats
   if (formatChoice == null || formatChoice.trim().isEmpty) {
-    print('⚠️  Using both formats (JSON + CSV) - default choice');
+    print('⚠️  No input detected, using both formats (JSON + CSV) - default choice');
     return;
   }
 
@@ -316,13 +379,18 @@ void main(List<String> args) async {
     print('\nChoose key format for CSV:');
     print('1. Snake case (add_comment)');
     print('2. Readable lowercase (add comment)');
-    stdout.write('Enter 1 or 2: ');
+    stdout.write('Type your choice (1/2) and press Enter: ');
 
-    String? input = stdin.readLineSync();
+    String? input;
+    try {
+      input = stdin.readLineSync()?.trim();
+    } catch (e) {
+      print('⚠️  Input error, using snake_case for keys - default choice');
+    }
 
     // Handle empty input - default to snake case
     if (input == null || input.trim().isEmpty) {
-      print('⚠️  Using snake_case for keys - default choice');
+      print('⚠️  No input detected, using snake_case for keys - default choice');
     } else {
       input = input.trim();
       snakeCase = input == '1' || input != '2'; // Default to snake case
