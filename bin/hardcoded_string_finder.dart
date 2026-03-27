@@ -33,7 +33,15 @@ Future<List<Map<String, dynamic>>> _findExistingStringFolders() async {
   try {
     await for (final entity in currentDir.list()) {
       if (entity is Directory) {
-        final folderName = entity.path.replaceAll('\\', '/').split('/').last;
+        // Get just the folder name from the full path
+        String folderName;
+        if (entity.path.contains('\\')) {
+          // Windows path
+          folderName = entity.path.split('\\').last;
+        } else {
+          // Unix path
+          folderName = entity.path.split('/').last;
+        }
 
         // Skip system, IDE, and common project folders
         if (folderName.startsWith('.') ||
