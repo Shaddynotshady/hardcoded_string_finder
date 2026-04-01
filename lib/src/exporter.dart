@@ -320,9 +320,9 @@ class StringExporter {
       final content = await file.readAsString();
       final lines = content.split('\n').where((line) => line.trim().isNotEmpty);
 
-      if (lines.length < 4)
-        return null; // Need at least header rows + 1 data row
-
+      if (lines.isEmpty || lines.length < 4) {
+        return null;
+      }
       // Parse language codes from row 2 (index 1)
       final languageCodesLine = lines.elementAt(1);
       final languageCodes = languageCodesLine

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.1
+- Fixed string filtration logic for more accurate detection
+- Fixed override issue during merge — existing translations are now fully preserved
+- Improved smart merging behavior in terminal output
+
 ## 1.0.0 - 2024
 
 ### 🚀 Initial Release

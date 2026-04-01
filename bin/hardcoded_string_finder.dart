@@ -315,10 +315,11 @@ void main(List<String> args) async {
     projectName = 'hardcoded_strings';
   }
 
-  final baseName = (projectName != null && projectName.isNotEmpty)
-      ? projectName
-      : 'hardcoded_strings';
+  final baseName = projectName.isNotEmpty
+    ? projectName
+    : 'hardcoded_strings';
 
+    
   // Handle _string/_strings suffix to avoid duplication
   String folderName;
   String fileName;

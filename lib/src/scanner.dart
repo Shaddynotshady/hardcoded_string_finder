@@ -7,11 +7,7 @@ class HardcodedScanner {
   final Duration? timeout;
   final void Function(String)? onProgress;
 
-  HardcodedScanner({
-    required this.rootPath,
-    this.timeout,
-    this.onProgress,
-  });
+  HardcodedScanner({required this.rootPath, this.timeout, this.onProgress});
 
   Future<Map<String, String>> scan() async {
     final results = <String, String>{};
@@ -27,6 +23,8 @@ class HardcodedScanner {
       RegExp(r'''content\s*:\s*Text\s*\(\s*['"]([^'"$]+)['"]'''),
       RegExp(r'''message\s*:\s*['"]([^'"$]+)['"]'''),
       RegExp(r'''return\s+['"]([^'"$]+)['"]'''),
+      // Assignment patterns for localization classes
+      RegExp(r'''=\s*['"]([^'"$]+)['"]'''),
     ];
 
     // Scan lib directory
@@ -51,14 +49,19 @@ class HardcodedScanner {
 
     if (timeout != null) {
       try {
-        await scanFuture.timeout(timeout!, onTimeout: () {
-          throw TimeoutException(
-              'Scan operation timed out after ${timeout!.inSeconds}s');
-        });
+        await scanFuture.timeout(
+          timeout!,
+          onTimeout: () {
+            throw TimeoutException(
+              'Scan operation timed out after ${timeout!.inSeconds}s',
+            );
+          },
+        );
       } on TimeoutException catch (e) {
         onProgress?.call('⚠️  ${e.message}');
         onProgress?.call(
-            '📊 Partial results: ${results.length} strings found before timeout');
+          '📊 Partial results: ${results.length} strings found before timeout',
+        );
         rethrow;
       }
     } else {
@@ -73,12 +76,14 @@ class HardcodedScanner {
     final files = <File>[];
 
     try {
-      await for (final entity
-          in dir.list(recursive: true, followLinks: false)) {
+      await for (final entity in dir.list(
+        recursive: true,
+        followLinks: false,
+      )) {
         if (entity is File &&
             entity.path.endsWith('.dart') &&
-            !entity.path.contains('generated') &&
-            !entity.path.contains('.g.dart')) {
+            !_isLocalizationFile(entity.path) &&
+            !_isLocalizationDirectory(entity.path)) {
           files.add(entity);
         }
       }
@@ -87,6 +92,45 @@ class HardcodedScanner {
     }
 
     return files;
+  }
+
+  /// Check if file is a generated localization file
+  bool _isLocalizationFile(String filePath) {
+    final fileName = filePath.split('/').last.toLowerCase();
+
+    // Skip files with localization patterns
+    final localizationPatterns = [
+      'localizations',
+      'messages_',
+      'app_localizations',
+      '_generated.dart',
+      '_intl.dart',
+      'internationalization',
+    ];
+
+    for (final pattern in localizationPatterns) {
+      if (fileName.contains(pattern)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /// Check if directory is a localization directory
+  bool _isLocalizationDirectory(String dirPath) {
+    final dirName = dirPath.split('/').last.toLowerCase();
+
+    // Skip common localization directories
+    final localizationDirs = [
+      'l10n',
+      'generated',
+      'intl',
+      'internationalization',
+      'localization',
+    ];
+
+    return localizationDirs.contains(dirName);
   }
 
   /// Scan files with progress tracking
@@ -107,20 +151,24 @@ class HardcodedScanner {
 
         // Show progress every 10 files or at the end
         if (processed % 10 == 0 || processed == files.length) {
-          final percentage =
-              ((processed / files.length) * 100).toStringAsFixed(1);
+          final percentage = ((processed / files.length) * 100).toStringAsFixed(
+            1,
+          );
           onProgress?.call(
-              '⏳ Progress: $processed/${files.length} files ($percentage%) - ${results.length} strings found');
+            '⏳ Progress: $processed/${files.length} files ($percentage%) - ${results.length} strings found',
+          );
         }
       } catch (e) {
         errors++;
-        onProgress
-            ?.call('⚠️  Error reading ${_getRelativePath(file.path)}: $e');
+        onProgress?.call(
+          '⚠️  Error reading ${_getRelativePath(file.path)}: $e',
+        );
 
         // Stop if too many errors
         if (errors > 10) {
           throw ScanException(
-              'Too many errors encountered (>10). Stopping scan.');
+            'Too many errors encountered (>10). Stopping scan.',
+          );
         }
       }
     }
@@ -142,7 +190,8 @@ class HardcodedScanner {
     // Skip very large files (>1MB) with warning
     if (content.length > 1024 * 1024) {
       onProgress?.call(
-          '⚠️  Skipping large file (>1MB): ${_getRelativePath(file.path)}');
+        '⚠️  Skipping large file (>1MB): ${_getRelativePath(file.path)}',
+      );
       return;
     }
 
@@ -200,8 +249,17 @@ class HardcodedScanner {
     if (trimmed.startsWith('/') || trimmed.startsWith('\\')) return true;
 
     // Ignore only symbols
-    if (RegExp(r'^[\.\,\:\;\!\?\-\+\*\/\=\(\)\[\]\{\}\s]+$')
-        .hasMatch(trimmed)) {
+    if (RegExp(
+      r'^[\.\,\:\;\!\?\-\+\*\/\=\(\)\[\]\{\}\s]+$',
+    ).hasMatch(trimmed)) {
+      return true;
+    }
+
+    // Ignore L10n localization references
+    if (trimmed.contains('L10n.') ||
+        trimmed.contains('\${L10n.') ||
+        trimmed.startsWith('L10n.') ||
+        trimmed.startsWith('\${L10n.')) {
       return true;
     }
 
@@ -209,7 +267,10 @@ class HardcodedScanner {
   }
 
   bool _isAlreadyLocalized(
-      String lineContent, int matchEnd, String fullContent) {
+    String lineContent,
+    int matchEnd,
+    String fullContent,
+  ) {
     // Check if there's .tr or .i18n after the string quote
     // Look ahead in the content from the match end position
     final remainingContent = fullContent.substring(matchEnd).trim();
