@@ -61,9 +61,11 @@ Future<List<Map<String, dynamic>>> _findExistingStringFolders() async {
 
         // Check if folder contains CSV or JSON files (any localization files)
         final files = await entity.list().toList();
-        final hasStringFiles = files.any((file) =>
-            file is File &&
-            (file.path.endsWith('.csv') || file.path.endsWith('.json')));
+        final hasStringFiles = files.any(
+          (file) =>
+              file is File &&
+              (file.path.endsWith('.csv') || file.path.endsWith('.json')),
+        );
 
         if (hasStringFiles) {
           // Extract base name (remove _strings suffix if present)
@@ -72,8 +74,10 @@ Future<List<Map<String, dynamic>>> _findExistingStringFolders() async {
             baseName = folderName.replaceAll('_strings', '');
           }
 
-          final stringCount =
-              await _getExistingStringCount(folderName, baseName);
+          final stringCount = await _getExistingStringCount(
+            folderName,
+            baseName,
+          );
           final stat = await entity.stat();
           final modified = stat.modified;
 
@@ -117,31 +121,38 @@ void _showExistingFolders(List<Map<String, dynamic>> folders) {
     // Show clean base name instead of folder name with _strings suffix
     final displayName = folder['baseName'] ?? folder['name'];
     print(
-        '   • $displayName (${folder['count']} strings) - last modified $timeAgo');
+      '   • $displayName (${folder['count']} strings) - last modified $timeAgo',
+    );
   }
   print('');
 }
 
 /// Warn user about existing folder and get confirmation
 bool _warnAboutExistingFolder(
-    String folderName, int existingCount, int newCount) {
+  String folderName,
+  int existingCount,
+  int newCount,
+) {
   print(
-      '\n⚠️  Folder "$folderName" already exists with $existingCount strings.');
+    '\n⚠️  Folder "$folderName" already exists with $existingCount strings.',
+  );
   print('');
   print('If you continue, you\'ll see options to:');
   print('• 🔀 Smart Merge (keep existing translations)');
   if (newCount > existingCount) {
     print(
-        '• 📁 Create New Version (add ${newCount - existingCount} new strings)');
+      '• 📁 Create New Version (add ${newCount - existingCount} new strings)',
+    );
   } else {
     print('• 📁 Create New Version (start fresh with $newCount strings)');
   }
   print('• ⚠️  Complete Overwrite (delete existing translations)');
   print('');
 
-  stdout
-      .write('Type \'y\' and press Enter to continue, or Ctrl+C to choose a different name: ');
-  
+  stdout.write(
+    'Type \'y\' and press Enter to continue, or Ctrl+C to choose a different name: ',
+  );
+
   try {
     final input = stdin.readLineSync()?.trim().toLowerCase();
     // Only continue if user types 'y', otherwise wait
@@ -154,7 +165,7 @@ bool _warnAboutExistingFolder(
     // If input fails, just continue
     print(' (auto-continuing due to input error)');
   }
-  
+
   return true;
 }
 
@@ -193,7 +204,9 @@ int _showMenu(String folderName, int existingCount, int newCount) {
 
   // Handle empty input - default to option 1
   if (choice == null || choice.trim().isEmpty) {
-    print('⚠️  No input detected, using Smart Merge (option 1) - default choice');
+    print(
+      '⚠️  No input detected, using Smart Merge (option 1) - default choice',
+    );
     return 1;
   }
 
@@ -215,7 +228,7 @@ int _showMenu(String folderName, int existingCount, int newCount) {
 String _getVersionName(String baseFolderName) {
   stdout.write('Enter version name (default: v2): ');
   String? version;
-  
+
   try {
     version = stdin.readLineSync();
   } catch (e) {
@@ -272,12 +285,12 @@ void main(List<String> args) async {
   // --- ASK FOR PROJECT NAME ---
   print('Enter project name (default: hardcoded_strings):');
   stdout.write('Project name: ');
-  
+
   String? projectName;
   try {
     // Try to read input normally
     final input = stdin.readLineSync();
-    
+
     // Handle different types of "empty" input across Windows terminals
     if (input == null || input.isEmpty) {
       // Empty or null input - treat as default
@@ -286,11 +299,11 @@ void main(List<String> args) async {
     } else {
       // Trim whitespace and newlines
       projectName = input.trim();
-      
+
       // Handle Windows-specific empty inputs
-      if (projectName.isEmpty || 
-          projectName == '\r' || 
-          projectName == '\n' || 
+      if (projectName.isEmpty ||
+          projectName == '\r' ||
+          projectName == '\n' ||
           projectName == '\r\n' ||
           projectName.length == 0) {
         projectName = 'hardcoded_strings';
@@ -302,10 +315,27 @@ void main(List<String> args) async {
     projectName = 'hardcoded_strings';
   }
 
-  final baseName = projectName;
+  final baseName = (projectName != null && projectName.isNotEmpty)
+      ? projectName
+      : 'hardcoded_strings';
 
-  final folderName = '${baseName}_strings';
-  final fileName = baseName;
+  // Handle _string/_strings suffix to avoid duplication
+  String folderName;
+  String fileName;
+
+  if (baseName.endsWith('_strings')) {
+    // User already included _strings (plural)
+    folderName = baseName;
+    fileName = baseName.replaceAll('_strings', '');
+  } else if (baseName.endsWith('_string')) {
+    // User included _string (singular)
+    folderName = '${baseName}s'; // Make it plural
+    fileName = baseName.replaceAll('_string', '');
+  } else {
+    // Normal case - add _strings suffix for folder, use base name for files
+    folderName = '${baseName}_strings';
+    fileName = baseName;
+  }
 
   // --- CHECK IF CHOSEN FOLDER AND CSV EXIST ---
   // Cache folder existence to avoid duplicate checks
@@ -366,7 +396,9 @@ void main(List<String> args) async {
 
   // Handle empty input - default to both formats
   if (formatChoice == null || formatChoice.trim().isEmpty) {
-    print('⚠️  No input detected, using both formats (JSON + CSV) - default choice');
+    print(
+      '⚠️  No input detected, using both formats (JSON + CSV) - default choice',
+    );
     return;
   }
 
@@ -398,15 +430,19 @@ void main(List<String> args) async {
 
     // Handle empty input - default to snake case
     if (input == null || input.trim().isEmpty) {
-      print('⚠️  No input detected, using snake_case for keys - default choice');
+      print(
+        '⚠️  No input detected, using snake_case for keys - default choice',
+      );
     } else {
       input = input.trim();
       snakeCase = input == '1' || input != '2'; // Default to snake case
     }
 
-    print(snakeCase
-        ? '✓ Using snake_case for keys.\n'
-        : '✓ Using readable lowercase for keys.\n');
+    print(
+      snakeCase
+          ? '✓ Using snake_case for keys.\n'
+          : '✓ Using readable lowercase for keys.\n',
+    );
   }
 
   // --- CREATE OUTPUT FOLDER ---
@@ -450,15 +486,18 @@ void main(List<String> args) async {
 
   if (shouldMerge) {
     print(
-        '\n🔀 Smart Merge completed: Your existing translations are preserved!');
+      '\n🔀 Smart Merge completed: Your existing translations are preserved!',
+    );
   } else if (shouldOverwrite) {
     print(
-        '\n⚠️  Overwrite completed: Previous translations have been deleted.');
+      '\n⚠️  Overwrite completed: Previous translations have been deleted.',
+    );
   }
 
   if (exportCsv) {
     print(
-        '\n💡 Tip: Double-click CSV to open in Excel or upload to Google Sheets');
+      '\n💡 Tip: Double-click CSV to open in Excel or upload to Google Sheets',
+    );
   }
 }
 
