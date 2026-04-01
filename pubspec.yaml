@@ -1,6 +1,6 @@
 name: hardcoded_string_finder
 description: Cross-platform CLI tool to find hardcoded strings in Flutter projects with smart input handling, translation preservation, and efficient CSV/JSON export for localization.
-version: 1.0.0
+version: 1.0.1
 repository: https://github.com/shaddynotshady/hardcoded_string_finder
 homepage: https://github.com/shaddynotshady/hardcoded_string_finder
 
