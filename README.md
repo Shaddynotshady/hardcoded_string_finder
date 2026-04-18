@@ -1,19 +1,31 @@
 # Hardcoded String Finder
 
-Find hardcoded strings in Flutter/Dart projects and export them to JSON/CSV for easy localization.
+A cross-platform CLI tool for Flutter/Dart projects that does two things:
+
+1. **Extract** hardcoded strings from your code and export them to CSV/JSON for translation
+2. **Generate** localization files from your translated CSV in multiple formats:
+   - ARB (Official Flutter) - for `flutter gen-l10n`
+   - GetX Map - for GetX state management
+   - Simple JSON - for custom parsing
+
+---
 
 ## Features
 
-✨ **Automatic Detection** - Scans your entire `lib/` directory for hardcoded strings  
-📊 **CSV Export** - Generates spreadsheet with 70+ language columns ready for translation  
-📄 **JSON Export** - Creates JSON file with key-value pairs  
-🔄 **Translation Preservation** - Merges new strings with existing translations  
-🔑 **Auto Key Generation** - Converts strings to valid localization keys  
-🚫 **Smart Filtering** - Ignores URLs, numbers, asset paths, and already localized strings  
-⚡ **Memory Efficient** - Handles large codebases without memory issues  
-⏱️ **Progress Tracking** - Real-time feedback on operations  
+✨ **Automatic Detection** - Scans your entire `lib/` directory for hardcoded strings
+📊 **CSV Export** - Generates spreadsheet with 70+ language columns ready for translation
+📄 **JSON Export** - Creates JSON file with key-value pairs
+🔄 **Translation Preservation** - Merges new strings with existing translations
+🔑 **Auto Key Generation** - Converts strings to valid snake_case localization keys
+🚫 **Smart Filtering** - Ignores URLs, numbers, asset paths, and already localized strings
+🌍 **ARB Generation** - Converts translated CSV directly into `.arb` files for Flutter l10n
+🚀 **GetX Map Generation** - Generates Dart Map files for GetX state management
+📄 **JSON Generation** - Generates simple JSON files for custom parsing
+📄 **l10n.yaml** - Auto-creates `l10n.yaml` in your project root (ARB format)
+⚠️ **Missing Translation Report** - Generates report files showing exactly which keys are missing in which languages
 🛡️ **Cross-Platform** - Works on Windows, macOS, and Linux  
-� **Smart Input Handling** - Never hangs on empty input  
+
+---
 
 ## Installation
 
@@ -31,11 +43,9 @@ hardcoded_string_finder
 
 ### Project-Specific Usage
 
-Add to your project:
-
 ```yaml
 dev_dependencies:
-  hardcoded_string_finder: ^1.0.0
+  hardcoded_string_finder: ^2.0.0
 ```
 
 Then run from project root:
@@ -43,6 +53,8 @@ Then run from project root:
 ```bash
 dart run hardcoded_string_finder
 ```
+
+---
 
 ## Usage
 
@@ -52,127 +64,85 @@ Run from your Flutter/Dart project root directory:
 dart run hardcoded_string_finder
 ```
 
-### Command-Line Options
+You will see:
 
-```bash
-# Basic usage
-dart run hardcoded_string_finder
+```
+🔍 Hardcoded String Finder v2.0.0
 
-# Enable memory monitoring
-dart run hardcoded_string_finder --memory
+What would you like to do?
 
-# Set custom timeout (in minutes)
-dart run hardcoded_string_finder --timeout=10
-
-# Combine options
-dart run hardcoded_string_finder --memory --timeout=15
-
-# Show help
-dart run hardcoded_string_finder --help
+1. Extract hardcoded strings from project
+2. Generate localization files from CSV
 ```
 
-**Available Options:**
+If you choose option 2, you'll see:
 
-- `--memory`, `-m` - Enable memory usage monitoring (shows memory at key stages)
-- `--timeout=<minutes>` - Set custom timeout in minutes (default: 5 minutes)
-- `--help`, `-h` - Display help message
+```
+🌍 Localization Format Selection
 
-The tool will prompt you to enter a folder name for your localization files. If the folder doesn't exist, it will be created automatically.
+Choose your localization format:
 
-### Folder Management
+1. ARB (Official Flutter)
+2. GetX Map
+3. Simple JSON
+```
 
-**First Time Run:**
+---
+
+## Option 1 — Extract Hardcoded Strings
+
+Scans your `lib/` directory, finds all hardcoded strings, and exports them to CSV and/or JSON.
+
+### First Time Run
 
 - Creates the specified folder if it doesn't exist
-- Generates both `hardcoded_strings.json` and `hardcoded_strings.csv` files
-- All strings are exported with empty translation columns ready for localization
+- Generates `hardcoded_strings.json` and/or `hardcoded_strings.csv`
+- CSV includes 70+ language columns ready for translation
 
-**Subsequent Runs:**
+### Subsequent Runs
 
-- Detects existing localization folders in your project
-- Merges new hardcoded strings with your existing translations
-- Preserves all previously completed translations
-- Updates English text for existing strings if they've changed
-- Maintains translation history for strings that may have been removed from code
+When you run again on an existing project, you get three choices:
 
-**Example Workflow:**
+```
+1. 🔀 Smart Merge (RECOMMENDED)
+   → Keep all existing translations
+   → Add new strings (empty translations ready)
 
-```bash
-# First run - creates new localization folder
-dart run hardcoded_string_finder
-# Enter folder name: myapp_strings
+2. 📁 Create New Version
+   → Keep old files untouched
+   → Create: myapp_strings_v2/
 
-# Later runs - merges with existing translations
-dart run hardcoded_string_finder
-# Detects existing: myapp_strings
-# Merges new strings without touching existing translations
+3. ⚠️  Complete Overwrite
+   → DELETE existing translations
+   → Start from scratch
 ```
 
-## Output
+### CSV Structure
 
-The tool generates two files in your specified folder:
+The exported CSV includes three header rows:
 
-- **hardcoded_strings.json** - JSON format with key-value pairs
-- **hardcoded_strings.csv** - CSV spreadsheet with 70+ language columns
+- **Row 1**: Column numbers (1, 2, 3, ...)
+- **Row 2**: Language codes (`app_en`, `app_ar`, `app_es`, ...)
+- **Row 3**: Language names (ENGLISH - en, Arabic - ar, Spanish - es, ...)
 
-### Intelligent File Management
-
-The tool implements smart file handling to protect your existing localization work:
-
-- **Non-destructive merging** - Never overwrites existing translations
-- **Incremental updates** - Only adds new strings, preserves existing ones
-- **Change detection** - Updates English text when source strings change
-- **Historical preservation** - Keeps translations for removed strings for future reference
-
-### Example Output
-
-**JSON:**
-
-```json
-{
-  "photo_was_saved": "Photo was saved",
-  "select_image": "Select Image",
-  "loading": "Loading..."
-}
-```
-
-**CSV:**
-The CSV includes three header rows:
-
-1. **Row 1**: Column numbers (1, 2, 3, ...)
-2. **Row 2**: Language codes (app_en, app_ar, app_es, ...)
-3. **Row 3**: Language names (ENGLISH - en, Arabic - ar, Spanish - es, ...)
-
-**Data rows example:**
+**Example data rows:**
 
 ```
 photo_was_saved,Photo was saved,,,
 select_image,Select Image,,,
 ```
 
-### Translation Preservation
+### Key Format
 
-When you run the tool multiple times, it intelligently manages your localization data:
+All keys are automatically converted to `snake_case`:
 
-**🆕 New Strings:**
+```
+"Select Image"   →  select_image
+"Loading..."     →  loading
+"Go Back?"       →  go_back
+```
 
-- Added with empty translation columns
-- Ready for manual translation
-
-**🔄 Updated Strings:**
-
-- English text updated to match current code
-- All existing translations preserved
-- No manual work lost
-
-**💾 Preserved Strings:**
-
-- Strings removed from code remain in CSV
-- Maintains translation history
-- Useful for feature re-implementation or rollback
-
-**📊 Progress Tracking:**
-The tool provides detailed feedback:
+### Smart Merge Tracking
 
 ```
 🔄 CSV updated: myapp_strings/hardcoded_strings.csv
@@ -182,9 +152,230 @@ The tool provides detailed feedback:
    📊 Total strings: 30
 ```
 
-## What It Detects
+---
 
-The tool finds hardcoded strings in:
+## Option 2 — Generate Localization Files from CSV
+
+Takes your translated CSV and generates localization files in your chosen format.
+
+### Common Flow (All Formats)
+
+**Step 1** — Choose your format:
+```
+1. ARB (Official Flutter)
+2. GetX Map
+3. Simple JSON
+```
+
+**Step 2** — Enter your CSV path (or press Enter for default):
+```
+Enter path to your CSV file:
+(default: ./hardcoded_strings/hardcoded_strings.csv)
+```
+
+**Step 3** — The tool shows a 5×5 terminal preview so you can identify your rows:
+```
+┌──────────────────────┬──────────────────────┬─────┐
+│                      │                      │ ... │  ← Row 1
+├──────────────────────┼──────────────────────┼─────┤
+│ app_en               │ app_ar               │ ... │  ← Row 2
+├──────────────────────┼──────────────────────┼─────┤
+│ ENGLISH - en         │ Arabic - ar          │ ... │  ← Row 3
+├──────────────────────┼──────────────────────┼─────┤
+│ select_image         │ Select Image         │ ... │  ← Row 4
+└──────────────────────┴──────────────────────┴─────┘
+```
+
+**Step 4** — Tell the tool which rows to use:
+```
+Which row number contains the language codes? (e.g. app_en, app_ru): 2
+Which row number does the translation data start?: 4
+```
+
+**Step 5** — Choose output folder (format-specific defaults).
+
+**Step 6** — Files are generated with progress feedback.
+
+---
+
+## ARB Format (Official Flutter)
+
+Generates `.arb` files for Flutter's official localization system.
+
+### Output Folder
+- Default: `lib/l10n/`
+
+### Generated Files
+- `app_en.arb`, `app_ar.arb`, etc. (one per language column)
+- `l10n.yaml` (in project root)
+- `arb_report.txt` (if any translations are missing)
+
+### Example ARB File
+
+```json
+{
+  "@@locale": "en",
+  "select_image": "Select Image",
+  "loading": "Loading...",
+  "photo_was_saved": "Photo was saved"
+}
+```
+
+### l10n.yaml (auto-created in project root)
+
+```yaml
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+nullable-getter: false
+```
+
+### Next Steps
+
+```bash
+# Add to pubspec.yaml under flutter:
+#   generate: true
+
+flutter pub add intl
+flutter pub add flutter_localizations --sdk=flutter
+flutter pub get
+flutter gen-l10n
+```
+
+---
+
+## GetX Map Format
+
+Generates Dart Map files for GetX state management.
+
+### Output Folder
+- Default: `lib/localization/`
+
+### Generated Files
+- `lib/localization/languages/app_en.dart`, `app_ar.dart`, etc. (one per language column)
+- `lib/localization/app_translations.dart` (main translation class)
+- `getx_report.txt` (if any translations are missing)
+
+### Example Language File (app_en.dart)
+
+```dart
+final Map<String, String> app_en = {
+  'select_image': 'Select Image',
+  'loading': 'Loading...',
+  'photo_was_saved': 'Photo was saved'
+};
+```
+
+### Main Translation File (app_translations.dart)
+
+```dart
+import 'package:your_package/localization/languages/app_en.dart';
+import 'package:your_package/localization/languages/app_ar.dart';
+import 'package:get/get.dart';
+
+class AppTranslations extends Translations {
+  @override
+  Map<String, Map<String, String>> get keys => {
+    'en_US': app_en,
+    'ar_SA': app_ar,
+  };
+}
+```
+
+### Next Steps
+
+```bash
+flutter pub add get
+```
+
+Then configure in your main.dart:
+```dart
+GetMaterialApp(
+  translations: AppTranslations(),
+  locale: Locale('en', 'US'),
+  fallbackLocale: Locale('en', 'US'),
+)
+```
+
+---
+
+## JSON Format
+
+Generates simple JSON files for custom parsing.
+
+### Output Folder
+- Default: `assets/translations/`
+
+### Generated Files
+- `app_en.json`, `app_ar.json`, etc. (one per language column)
+- `json_report.txt` (if any translations are missing)
+
+### Example JSON File (app_en.json)
+
+```json
+{
+  "select_image": "Select Image",
+  "loading": "Loading...",
+  "photo_was_saved": "Photo was saved"
+}
+```
+
+### Next Steps
+
+Add to your pubspec.yaml:
+```yaml
+flutter:
+  assets:
+    - assets/translations/
+```
+
+Then run:
+```bash
+flutter pub get
+```
+
+Load in your app:
+```dart
+final content = await rootBundle.loadString('assets/translations/app_en.json');
+final translations = jsonDecode(content);
+```
+
+---
+
+## Missing Translation Reports
+
+All formats generate missing translation reports if any key has a translation in some languages but is missing in others:
+
+- **ARB**: `arb_report.txt` in `lib/l10n/`
+- **GetX**: `getx_report.txt` in `lib/localization/`
+- **JSON**: `json_report.txt` in `assets/translations/`
+
+### Report Format
+
+```
+📊 [Format] Generation Report
+Generated: 2026-01-15 10:30:00
+Total keys: 141
+[Format] files created: 70
+Keys with missing translations: 2
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Missing Translations (by key):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[select_image]
+  Missing in: app_ar, app_zh
+
+[loading]
+  Missing in: app_ru
+```
+
+> Keys missing in ALL languages are not reported — that is considered intentional (not yet translated).
+
+---
+
+## What It Detects
 
 - `Text()` widgets
 - `text:` properties
@@ -202,60 +393,15 @@ The tool finds hardcoded strings in:
 - Symbols only
 - Already localized strings (`.tr`, `.i18n`, `AppString.`)
 
+---
+
 ## Supported Languages
 
-The CSV output includes columns for 70+ languages including:
-English, Arabic, Spanish, French, German, Chinese, Japanese, Korean, Russian, Hindi, and many more.
+70+ languages including English, Arabic, Spanish, French, German, Chinese, Japanese, Korean, Russian, Hindi, and many more.
 
-**Language codes included:** app_en, app_af, app_sq, app_am, app_ar, app_hy, app_az, app_bn, app_eu, app_be, app_bg, app_my, app_ca, app_zh, app_zh_hk, app_hr, app_cs, app_da, app_nl, app_et, app_fil, app_fi, app_fr, app_gl, app_ka, app_de, app_el, app_gu, app_he, app_hi, app_hu, app_is, app_id, app_it, app_ja, app_kn, app_kk, app_km, app_ko, app_ky, app_lo, app_lv, app_lt, app_mk, app_ms, app_ml, app_mr, app_mn, app_ne, app_no, app_fa, app_pl, app_pt, app_pa, app_ro, app_ru, app_sr, app_si, app_sk, app_sl, app_es, app_sw, app_sv, app_ta, app_te, app_th, app_tr, app_uk, app_vi, app_zu
+**All language codes:** `app_en`, `app_af`, `app_sq`, `app_am`, `app_ar`, `app_hy`, `app_az`, `app_bn`, `app_eu`, `app_be`, `app_bg`, `app_my`, `app_ca`, `app_zh`, `app_zh_hk`, `app_hr`, `app_cs`, `app_da`, `app_nl`, `app_et`, `app_fil`, `app_fi`, `app_fr`, `app_gl`, `app_ka`, `app_de`, `app_el`, `app_gu`, `app_he`, `app_hi`, `app_hu`, `app_is`, `app_id`, `app_it`, `app_ja`, `app_kn`, `app_kk`, `app_km`, `app_ko`, `app_ky`, `app_lo`, `app_lv`, `app_lt`, `app_mk`, `app_ms`, `app_ml`, `app_mr`, `app_mn`, `app_ne`, `app_no`, `app_fa`, `app_pl`, `app_pt`, `app_pa`, `app_ro`, `app_ru`, `app_sr`, `app_si`, `app_sk`, `app_sl`, `app_es`, `app_sw`, `app_sv`, `app_ta`, `app_te`, `app_th`, `app_tr`, `app_uk`, `app_vi`, `app_zu`
 
-## Advanced Usage
-
-### Custom Output Directory
-
-```bash
-dart run hardcoded_string_finder --output-dir ./localization
-```
-
-### Snake Case Keys (Default)
-
-The tool generates snake_case keys by default:
-
-```dart
-"Select Image" → "select_image"
-"Loading..." → "loading"
-```
-
-### Programmatic Usage
-
-```dart
-import 'package:hardcoded_string_finder/hardcoded_string_finder.dart';
-
-void main() async {
-  // Create scanner with progress tracking
-  final scanner = HardcodedScanner(
-    rootPath: './lib',
-    timeout: Duration(minutes: 5),
-    onProgress: (message) => print(message),
-  );
-
-  // Scan for strings
-  final strings = await scanner.scan();
-
-  // Export with progress tracking
-  await StringExporter.exportToJson(
-    strings,
-    'output.json',
-    onProgress: (message) => print(message),
-  );
-
-  await StringExporter.exportToCsv(
-    strings,
-    'output.csv',
-    onProgress: (message) => print(message),
-  );
-}
-```
+---
 
 ## Contributing
 
@@ -269,7 +415,29 @@ MIT License - see LICENSE file for details
 
 Found a bug? Have a feature request? Please open an issue on GitHub.
 
+---
+
 ## Changelog
+
+### 2.0.0
+
+- Added Option 2: Generate localization files in multiple formats
+  - ARB (Official Flutter) - for `flutter gen-l10n`
+  - GetX Map - for GetX state management
+  - Simple JSON - for custom parsing
+- Format selection menu for choosing localization format
+- CSV preview in terminal (5×5 table) before asking for row configuration
+- Header row validation with retry loop
+- Auto-creates `l10n.yaml` in project root (ARB format)
+- Per-key missing translation reports for all formats:
+  - `arb_report.txt`
+  - `getx_report.txt`
+  - `json_report.txt`
+- Locale derived automatically from column name (`app_en` → `en`, `app_zh_hk` → `zh_HK`)
+- All keys auto-converted to snake_case regardless of CSV format
+- Clean file structure — all generators in `lib/src/generators/`
+- GetX generator only includes languages with actual translations
+- Package name prompt for GetX imports
 
 ### 1.0.0
 

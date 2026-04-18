@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'dart:async';
-import 'key_generator.dart';
+import '../key_generator/key_generator.dart';
 
 class HardcodedScanner {
   final String rootPath;

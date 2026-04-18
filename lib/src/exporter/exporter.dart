@@ -1,17 +1,64 @@
 import 'dart:io';
 import 'dart:convert';
 
-class CsvRow {
-  final String key;
-  final String english;
-  final Map<String, String> translations;
-
-  CsvRow(
-      {required this.key, required this.english, required this.translations});
+/// Read file content with encoding fallback for cross-platform compatibility
+Future<String> _readFileWithEncoding(File file) async {
+  try {
+    return await file.readAsString(encoding: utf8);
+  } catch (e) {
+    // Fallback to Latin-1 (ISO-8859-1) which can read any byte sequence
+    try {
+      return await file.readAsString(encoding: latin1);
+    } catch (e2) {
+      // Last resort: try system encoding
+      try {
+        return await file.readAsString(encoding: Encoding.getByName(Platform.localeName) ?? utf8);
+      } catch (e3) {
+        throw Exception('Failed to read file with any encoding: ${file.path}. Error: $e3');
+      }
+    }
+  }
 }
 
+/// Represents a single row from an existing CSV file,
+/// storing the key, English text, and all existing translations.
+class CsvRow {
+  /// The localization key (snake_case).
+  final String key;
+
+  /// The English source text.
+  final String english;
+
+  /// A map of language codes to their translated values.
+  /// e.g. `{'app_ar': 'مرحبا', 'app_fr': 'Bonjour'}`
+  final Map<String, String> translations;
+
+  /// Creates a [CsvRow] with the given [key], [english] text, and [translations].
+  CsvRow({
+    required this.key,
+    required this.english,
+    required this.translations,
+  });
+}
+
+/// Handles exporting hardcoded strings to JSON and CSV formats.
+///
+/// Use [exportToJson] to create a simple key-value JSON file,
+/// or [exportToCsv] to create a spreadsheet with 70+ language columns
+/// ready for translation.
 class StringExporter {
-  /// Export strings to JSON with error handling
+  /// Exports [strings] to a JSON file at [outputPath].
+  ///
+  /// The output is a pretty-printed JSON object with snake_case keys
+  /// and English values.
+  ///
+  /// ```dart
+  /// await StringExporter.exportToJson(
+  ///   strings,
+  ///   'output/strings.json',
+  ///   onProgress: print,
+  /// );
+  /// ```
   static Future<void> exportToJson(
     Map<String, String> strings,
     String outputPath, {
@@ -23,7 +70,6 @@ class StringExporter {
       final file = File(outputPath);
       final jsonContent = const JsonEncoder.withIndent('  ').convert(strings);
 
-      // Write with error handling
       await file.writeAsString(jsonContent);
 
       final sizeKB = (jsonContent.length / 1024).toStringAsFixed(2);
@@ -33,6 +79,22 @@ class StringExporter {
     }
   }
 
+  /// Exports [strings] to a CSV file at [outputPath] with 70+ language columns.
+  ///
+  /// If a CSV already exists at [outputPath], existing translations are
+  /// preserved and new strings are merged in (non-destructive).
+  ///
+  /// Set [snakeCaseKeys] to `true` (default) to use `snake_case` keys,
+  /// or `false` for readable lowercase keys with spaces.
+  ///
+  /// ```dart
+  /// await StringExporter.exportToCsv(
+  ///   strings,
+  ///   'output/strings.csv',
+  ///   snakeCaseKeys: true,
+  ///   onProgress: print,
+  /// );
+  /// ```
   static Future<void> exportToCsv(
     Map<String, String> strings,
     String outputPath, {
@@ -42,12 +104,10 @@ class StringExporter {
     try {
       onProgress?.call('📊 Preparing CSV export...');
 
-      // Read existing CSV data if it exists
       final existingData = await _readExistingCsv(outputPath, onProgress);
 
       final buffer = StringBuffer();
 
-      // Language codes for header
       final languageCodes = [
         'app_en',
         'app_af',
@@ -118,7 +178,7 @@ class StringExporter {
         'app_tr',
         'app_uk',
         'app_vi',
-        'app_zu'
+        'app_zu',
       ];
 
       final languageNames = [
@@ -192,54 +252,54 @@ class StringExporter {
         'Turkish - tr',
         'Ukrainian - uk',
         'Vietnamese - vi',
-        'Zulu - zu'
+        'Zulu - zu',
       ];
 
       onProgress?.call('📝 Writing CSV headers...');
 
-      // Row 1: Numbers (empty first cell, then 1, 2, 3...)
-      buffer.write(','); // Empty first column
+      // Row 1: Numbers
+      buffer.write(',');
       for (int i = 1; i <= languageCodes.length; i++) {
         buffer.write('$i');
         if (i < languageCodes.length) buffer.write(',');
       }
       buffer.writeln();
 
-      // Row 2: Language codes (empty first cell)
-      buffer.write(','); // Empty first column
+      // Row 2: Language codes
+      buffer.write(',');
       buffer.writeln(languageCodes.join(','));
 
       // Row 3: Language names
       buffer.writeln(_escapeCsvRow(languageNames));
 
-      // Track statistics for reporting
       int newStrings = 0;
       int updatedStrings = 0;
       int preservedStrings = 0;
 
       onProgress?.call('📝 Processing ${strings.length} strings...');
 
-      // Data rows - merge new strings with existing translations
       strings.forEach((key, value) {
         final formattedKey = snakeCaseKeys ? key : key.replaceAll('_', ' ');
-
-        // Check if this string exists in existing data
         final existingRow = existingData?[formattedKey];
 
         if (existingRow != null) {
-          // String exists - preserve translations, update English if changed
-          updatedStrings++;
+          // Check if English text actually changed
+          final englishChanged = existingRow.english != value;
+          if (englishChanged) {
+            updatedStrings++;
+          } else {
+            preservedStrings++;
+          }
           final row = [
             formattedKey,
-            value, // Always use current English text
+            existingRow.english.isNotEmpty ? existingRow.english : value,
             ...List.generate(languageCodes.length - 1, (index) {
-              final langCode = languageCodes[index + 1]; // Skip app_en
+              final langCode = languageCodes[index + 1];
               return existingRow.translations[langCode] ?? '';
             }),
           ];
           buffer.writeln(_escapeCsvRow(row));
         } else {
-          // New string - create empty translations
           newStrings++;
           final row = [
             formattedKey,
@@ -250,14 +310,12 @@ class StringExporter {
         }
       });
 
-      // Add existing strings that are no longer found in code (preserve them)
       if (existingData != null) {
         onProgress?.call('📝 Preserving removed strings...');
         for (final existingKey in existingData.keys) {
           final formattedKey =
               snakeCaseKeys ? existingKey : existingKey.replaceAll('_', ' ');
 
-          // Skip if already processed (exists in current strings)
           if (strings.containsKey(existingKey)) continue;
 
           preservedStrings++;
@@ -266,7 +324,7 @@ class StringExporter {
             formattedKey,
             existingRow.english,
             ...List.generate(languageCodes.length - 1, (index) {
-              final langCode = languageCodes[index + 1]; // Skip app_en
+              final langCode = languageCodes[index + 1];
               return existingRow.translations[langCode] ?? '';
             }),
           ];
@@ -275,11 +333,19 @@ class StringExporter {
       }
 
       onProgress?.call('💾 Writing CSV file...');
-      await File(outputPath).writeAsString(buffer.toString());
+      try {
+        await File(outputPath).writeAsString(buffer.toString());
+      } on PathAccessException catch (e) {
+        throw ExportException(
+          'Cannot write to CSV file because it is open in another program.\n'
+          '💡 Please close the file (Excel, spreadsheet viewer, etc.) and try again.\n'
+          '📁 File: $outputPath\n'
+          'Error: $e',
+        );
+      }
 
       final sizeKB = (buffer.length / 1024).toStringAsFixed(2);
 
-      // Report what happened
       if (existingData == null) {
         onProgress?.call(
             '✅ CSV exported: $outputPath (${strings.length} strings, $sizeKB KB)');
@@ -296,7 +362,6 @@ class StringExporter {
     }
   }
 
-  /// Helper to escape CSV values with quotes if needed
   static String _escapeCsvRow(List<String> values) {
     return values.map((value) {
       if (value.contains(',') || value.contains('"') || value.contains('\n')) {
@@ -306,7 +371,6 @@ class StringExporter {
     }).join(',');
   }
 
-  /// Read existing CSV file and parse into structured data
   static Future<Map<String, CsvRow>?> _readExistingCsv(
     String outputPath,
     void Function(String)? onProgress,
@@ -317,26 +381,22 @@ class StringExporter {
 
       onProgress?.call('📖 Reading existing CSV...');
 
-      final content = await file.readAsString();
+      final content = await _readFileWithEncoding(file);
       final lines = content.split('\n').where((line) => line.trim().isNotEmpty);
 
-      if (lines.isEmpty || lines.length < 4) {
-        return null;
-      }
-      // Parse language codes from row 2 (index 1)
+      if (lines.isEmpty || lines.length < 4) return null;
+
       final languageCodesLine = lines.elementAt(1);
       final languageCodes = languageCodesLine
           .split(',')
           .where((code) => code.trim().isNotEmpty)
           .toList();
 
-      // Remove empty first element and clean up codes
       languageCodes.removeAt(0);
       final cleanCodes = languageCodes.map((code) => code.trim()).toList();
 
-      Map<String, CsvRow> existingData = {};
+      final Map<String, CsvRow> existingData = {};
 
-      // Parse data rows (starting from row 4, index 3)
       for (int i = 3; i < lines.length; i++) {
         final line = lines.elementAt(i);
         final values = _parseCsvLine(line);
@@ -345,7 +405,7 @@ class StringExporter {
           final key = values.elementAt(0).trim();
           final english = values.length > 1 ? values.elementAt(1).trim() : '';
 
-          Map<String, String> translations = {};
+          final Map<String, String> translations = {};
           for (int j = 2; j < values.length && j - 2 < cleanCodes.length; j++) {
             translations[cleanCodes[j - 2]] = values.elementAt(j).trim();
           }
@@ -366,9 +426,8 @@ class StringExporter {
     }
   }
 
-  /// Parse CSV line handling quoted values
   static List<String> _parseCsvLine(String line) {
-    List<String> values = [];
+    final List<String> values = [];
     bool inQuotes = false;
     String currentValue = '';
 
@@ -377,15 +436,12 @@ class StringExporter {
 
       if (char == '"') {
         if (inQuotes && i + 1 < line.length && line[i + 1] == '"') {
-          // Escaped quote
           currentValue += '"';
-          i++; // Skip next quote
+          i++;
         } else {
-          // Toggle quote mode
           inQuotes = !inQuotes;
         }
       } else if (char == ',' && !inQuotes) {
-        // End of value
         values.add(currentValue);
         currentValue = '';
       } else {
@@ -393,15 +449,17 @@ class StringExporter {
       }
     }
 
-    // Add last value
     values.add(currentValue);
     return values;
   }
 }
 
-/// Custom exception for export errors
+/// Thrown when an export operation fails.
 class ExportException implements Exception {
+  /// The error message describing what went wrong.
   final String message;
+
+  /// Creates an [ExportException] with the given [message].
   ExportException(this.message);
 
   @override
