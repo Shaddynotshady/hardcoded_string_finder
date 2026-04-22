@@ -154,6 +154,105 @@ All keys are automatically converted to `snake_case`:
 
 ---
 
+## Option 3 — Auto-replace Hardcoded Strings
+
+Automatically replaces hardcoded strings in your code with localization keys from your generated ARB, GetX, or JSON files.
+
+### Flow
+
+**Step 1** — Choose your localization format:
+```
+1. ARB (Official Flutter)
+2. GetX Map
+3. Custom JSON
+```
+
+**Step 2** — Enter your localization folder path (or press Enter for default):
+```
+Enter path to your localization files:
+(default: lib/l10n/ for ARB, lib/localization/ for GetX, assets/translations/ for JSON)
+```
+
+**Step 3** — Choose replacement mode:
+```
+1. Replace all at once
+2. Preview file-by-file with confirmation
+```
+
+**Step 4** — Backup suggestion:
+```
+⚠️  This will modify your source files.
+💡 It's recommended to create a backup before proceeding.
+Create backup to .hardcoded_backup/? (y/N)
+```
+
+**Step 5** — The tool scans lib/ for hardcoded strings and matches them with your localization keys.
+
+**Replace All Mode:**
+- Automatically replaces all matched strings
+- Shows summary of changes
+- Backup created if requested
+
+**File-by-File Preview Mode:**
+- Shows each file with proposed changes
+- Preview example:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[1/4] lib/screens/home.dart (5 strings)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Line 24: - Text("Select Image")
+         + Text(AppLocalizations.of(context).selectImage)
+
+Line 45: - Text("Loading...")
+         + Text(AppLocalizations.of(context).loading)
+```
+- Choose to replace, skip, or continue to next file
+- Full control over which files to modify
+
+### Prerequisites
+
+- You must have generated localization files first using Option 2
+- Localization files must contain key-value pairs matching your hardcoded strings
+- Backup is recommended (saves to `.hardcoded_backup/`)
+
+### Replacement Patterns
+
+**ARB Format:**
+```
+"Select Image" → AppLocalizations.of(context).selectImage
+```
+
+**GetX Format:**
+```
+"Select Image" → tr.selectImage
+```
+
+**Custom JSON Format:**
+```
+"Select Image" → AppLocalizations.of(context).selectImage
+```
+(You can customize this pattern for your JSON implementation)
+
+### Safety Features
+
+- Backup option saves original files to `.hardcoded_backup/`
+- File-by-file preview mode lets you review changes before applying
+- Only replaces strings that have exact matches in localization files
+- Shows clear summary of all changes made
+
+### Example Usage
+
+```bash
+dart run hardcoded_string_finder
+# Choose option 3
+# Select ARB format
+# Confirm folder path
+# Choose file-by-file preview
+# Review and approve changes per file
+```
+
+---
+
 ## Option 2 — Generate Localization Files from CSV
 
 Takes your translated CSV and generates localization files in your chosen format.

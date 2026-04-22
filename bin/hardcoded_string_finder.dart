@@ -1,16 +1,18 @@
 import 'dart:io';
 import 'package:hardcoded_string_finder/src/cli/cli_extractor.dart';
 import 'package:hardcoded_string_finder/src/cli/cli_format_selector.dart';
+// import 'package:hardcoded_string_finder/src/cli/cli_replacer.dart'; // Commented for v2.1 release
 // import 'package:hardcoded_string_finder/src/cli/cli_translate.dart'; // Commented for v2 release
 
 /// Entry point
 /// Run with: dart run hardcoded_string_finder
 void main(List<String> args) async {
-  print('🔍 Hardcoded String Finder v2.0.0\n');
+  print('🔍 Hardcoded String Finder v2.1.0\n');
   print('What would you like to do?\n');
   print('1. Extract hardcoded strings from project');
   print('2. Generate localization files from CSV');
-  // print('3. Auto-translate CSV (Langbly/DeepL)\n'); // Commented for v2 release
+  // print('3. Auto-replace hardcoded strings with localization keys'); // Commented for v2.1 release
+  // print('4. Auto-translate CSV (Langbly/DeepL)\n'); // Commented for v2 release
   stdout.write('Type your choice (1/2) and press Enter: ');
 
   String? choice;
@@ -26,6 +28,9 @@ void main(List<String> args) async {
   } else if (choice == '2') {
     await runFormatSelector();
   } // else if (choice == '3') {
+  //   await runReplacer();
+  // } // Commented for v2.1 release
+  // else if (choice == '4') {
   //   await runTranslateGenerator();
   // } // Commented for v2 release
   else {

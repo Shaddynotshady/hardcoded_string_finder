@@ -36,8 +36,10 @@ export 'src/cli/cli_extractor.dart';
 export 'src/cli/cli_arb.dart';
 export 'src/cli/cli_getx.dart';
 export 'src/cli/cli_json.dart';
+// export 'src/cli/cli_replacer.dart'; // Commented for v2.1 release
 // export 'src/cli/cli_translate.dart'; // Commented for v2 release
 export 'src/cli/cli_format_selector.dart';
+// export 'src/replacer/replacer.dart'; // Commented for v2.1 release
 // export 'src/translation/langbly_translator.dart'; // Commented for v2 release
 // export 'src/translation/deepl_translator.dart'; // Commented for v2 release
 // export 'src/translation/quota_tracker.dart'; // Commented for v2 release

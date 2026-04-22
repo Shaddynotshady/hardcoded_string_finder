@@ -2,6 +2,19 @@ import 'dart:io';
 import 'dart:async';
 import '../key_generator/key_generator.dart';
 
+/// Scan result with file and line information
+class ScanResult {
+  final String value;
+  final String filePath;
+  final int lineNumber;
+
+  ScanResult({
+    required this.value,
+    required this.filePath,
+    required this.lineNumber,
+  });
+}
+
 class HardcodedScanner {
   final String rootPath;
   final Duration? timeout;
@@ -69,6 +82,43 @@ class HardcodedScanner {
     }
 
     return results;
+  }
+
+  /// Scan with detailed file and line information
+  Future<List<ScanResult>> scanWithDetails() async {
+    final results = <ScanResult>{};
+
+    // Patterns to search (matching your original script)
+    final patterns = [
+      RegExp(r'''Text\s*\(\s*['"]([^'"$]+)['"]'''),
+      RegExp(r'''text\s*:\s*['"]([^'"$]+)['"]'''),
+      RegExp(r'''title\s*:\s*['"]([^'"$]+)['"]'''),
+      RegExp(r'''label\s*:\s*['"]([^'"$]+)['"]'''),
+      RegExp(r'''hintText\s*:\s*['"]([^'"$]+)['"]'''),
+      RegExp(r'''labelText\s*:\s*['"]([^'"$]+)['"]'''),
+      RegExp(r'''content\s*:\s*Text\s*\(\s*['"]([^'"$]+)['"]'''),
+      RegExp(r'''message\s*:\s*['"]([^'"$]+)['"]'''),
+      RegExp(r'''return\s+['"]([^'"$]+)['"]'''),
+      RegExp(r'''=\s*['"]([^'"$]+)['"]'''),
+    ];
+
+    // Scan lib directory
+    final libDir = Directory(rootPath);
+    if (!libDir.existsSync()) {
+      throw DirectoryNotFoundException('Directory not found: $rootPath');
+    }
+
+    // Collect files
+    final dartFiles = await _collectDartFiles(libDir);
+
+    if (dartFiles.isEmpty) {
+      return results.toList();
+    }
+
+    // Process files
+    await _scanFilesWithDetails(dartFiles, patterns, results);
+
+    return results.toList();
   }
 
   /// Collect all Dart files efficiently
@@ -178,6 +228,22 @@ class HardcodedScanner {
     }
   }
 
+  /// Scan files with detailed result information
+  Future<void> _scanFilesWithDetails(
+    List<File> files,
+    List<RegExp> patterns,
+    Set<ScanResult> results,
+  ) async {
+    for (final file in files) {
+      try {
+        await _processFileWithDetails(file, patterns, results);
+      } catch (e) {
+        onProgress
+            ?.call('⚠️  Error reading ${_getRelativePath(file.path)}: $e');
+      }
+    }
+  }
+
   /// Process a single file efficiently
   Future<void> _processFile(
     File file,
@@ -215,6 +281,47 @@ class HardcodedScanner {
         // Generate key and add to results
         final key = KeyGenerator.generate(text);
         results[key] = text;
+      }
+    }
+  }
+
+  /// Process a single file with detailed result information
+  Future<void> _processFileWithDetails(
+    File file,
+    List<RegExp> patterns,
+    Set<ScanResult> results,
+  ) async {
+    final content = await file.readAsString();
+
+    // Skip very large files (>1MB)
+    if (content.length > 1024 * 1024) {
+      return;
+    }
+
+    final lines = content.split('\n');
+    final relativePath = _getRelativePath(file.path);
+
+    for (final pattern in patterns) {
+      final matches = pattern.allMatches(content);
+
+      for (final match in matches) {
+        final text = match.group(1) ?? '';
+
+        // Skip if should ignore
+        if (_shouldIgnore(text)) continue;
+
+        final lineNum = content.substring(0, match.start).split('\n').length;
+        final lineContent = lines[lineNum - 1].trim();
+
+        // Skip if already localized
+        if (_isAlreadyLocalized(lineContent, match.end, content)) continue;
+
+        // Add detailed result
+        results.add(ScanResult(
+          value: text,
+          filePath: relativePath,
+          lineNumber: lineNum,
+        ));
       }
     }
   }

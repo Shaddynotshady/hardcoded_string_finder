@@ -14,9 +14,11 @@ Future<String> _readFileWithEncoding(File file) async {
     } catch (e2) {
       // Last resort: try system encoding
       try {
-        return await file.readAsString(encoding: Encoding.getByName(Platform.localeName) ?? utf8);
+        return await file.readAsString(
+            encoding: Encoding.getByName(Platform.localeName) ?? utf8);
       } catch (e3) {
-        throw Exception('Failed to read file with any encoding: ${file.path}. Error: $e3');
+        throw Exception(
+            'Failed to read file with any encoding: ${file.path}. Error: $e3');
       }
     }
   }
@@ -40,10 +42,14 @@ class ArbResult {
   /// not included (considered intentionally untranslated).
   final Map<String, List<String>> missingByKey;
 
+  /// Mapping of duplicate keys to their row numbers in the CSV.
+  final Map<String, List<int>> duplicates;
+
   ArbResult({
     required this.filesCreated,
     required this.totalKeys,
     required this.missingByKey,
+    required this.duplicates,
   });
 }
 
@@ -232,15 +238,29 @@ class ArbGenerator {
     final translations = <String, Map<String, String>>{};
     final allKeys = <String>[];
 
+    // Track duplicate keys with row numbers
+    final keyRows = <String, List<int>>{};
+    int currentRow = dataStartRow;
+
     for (final line in dataRows) {
       final cols = _parseCsvLine(line);
-      if (cols.isEmpty) continue;
+      if (cols.isEmpty) {
+        currentRow++;
+        continue;
+      }
 
       final key = cols[0].trim();
-      if (key.isEmpty) continue;
+      if (key.isEmpty) {
+        currentRow++;
+        continue;
+      }
 
       final snakeKey = KeyGenerator.generate(key);
       allKeys.add(snakeKey);
+
+      // Track row number for this key
+      keyRows.putIfAbsent(snakeKey, () => []);
+      keyRows[snakeKey]!.add(currentRow);
 
       for (final entry in langColumns.entries) {
         final colIdx = entry.key;
@@ -251,6 +271,16 @@ class ArbGenerator {
         if (value.isNotEmpty) {
           translations[langCode]![snakeKey] = value;
         }
+      }
+
+      currentRow++;
+    }
+
+    // Detect and report duplicate keys
+    final duplicates = <String, List<int>>{};
+    for (final entry in keyRows.entries) {
+      if (entry.value.length > 1) {
+        duplicates[entry.key] = entry.value;
       }
     }
 
@@ -334,6 +364,7 @@ class ArbGenerator {
       filesCreated: filesCreated,
       totalKeys: allKeys.length,
       missingByKey: missingByKey,
+      duplicates: duplicates,
     );
   }
 

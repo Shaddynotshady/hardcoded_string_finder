@@ -14,9 +14,11 @@ Future<String> _readFileWithEncoding(File file) async {
     } catch (e2) {
       // Last resort: try system encoding
       try {
-        return await file.readAsString(encoding: Encoding.getByName(Platform.localeName) ?? utf8);
+        return await file.readAsString(
+            encoding: Encoding.getByName(Platform.localeName) ?? utf8);
       } catch (e3) {
-        throw Exception('Failed to read file with any encoding: ${file.path}. Error: $e3');
+        throw Exception(
+            'Failed to read file with any encoding: ${file.path}. Error: $e3');
       }
     }
   }
@@ -40,10 +42,14 @@ class GetXResult {
   /// not included (considered intentionally untranslated).
   final Map<String, List<String>> missingByKey;
 
+  /// Mapping of duplicate keys to their row numbers in the CSV.
+  final Map<String, List<int>> duplicates;
+
   GetXResult({
     required this.filesCreated,
     required this.totalKeys,
     required this.missingByKey,
+    required this.duplicates,
   });
 }
 
@@ -234,15 +240,29 @@ class GetXGenerator {
     final translations = <String, Map<String, String>>{};
     final allKeys = <String>[];
 
+    // Track duplicate keys with row numbers
+    final keyRows = <String, List<int>>{};
+    int currentRow = dataStartRow;
+
     for (final line in dataRows) {
       final cols = _parseCsvLine(line);
-      if (cols.isEmpty) continue;
+      if (cols.isEmpty) {
+        currentRow++;
+        continue;
+      }
 
       final key = cols[0].trim();
-      if (key.isEmpty) continue;
+      if (key.isEmpty) {
+        currentRow++;
+        continue;
+      }
 
       final snakeKey = KeyGenerator.generate(key);
       allKeys.add(snakeKey);
+
+      // Track row number for this key
+      keyRows.putIfAbsent(snakeKey, () => []);
+      keyRows[snakeKey]!.add(currentRow);
 
       for (final entry in langColumns.entries) {
         final colIdx = entry.key;
@@ -254,13 +274,29 @@ class GetXGenerator {
           translations[langCode]![snakeKey] = value;
         }
       }
+
+      currentRow++;
     }
+
+    // Detect and report duplicate keys
+    final duplicates = <String, List<int>>{};
+    for (final entry in keyRows.entries) {
+      if (entry.value.length > 1) {
+        duplicates[entry.key] = entry.value;
+      }
+    }
+
+    // Filter to only languages that have at least one translation
+    final activeLanguages = translations.entries
+        .where((e) => e.value.isNotEmpty)
+        .map((e) => e.key)
+        .toSet();
 
     // Track missing translations: key → list of langCodes missing that key
     final missingByKey = <String, List<String>>{};
     for (final key in allKeys) {
       final missingLangs = <String>[];
-      for (final langCode in langColumns.values) {
+      for (final langCode in activeLanguages) {
         final langTranslations = translations[langCode];
         if (langTranslations == null || !langTranslations.containsKey(key)) {
           missingLangs.add(langCode);
@@ -324,6 +360,7 @@ class GetXGenerator {
       filesCreated: filesCreated,
       totalKeys: allKeys.length,
       missingByKey: missingByKey,
+      duplicates: duplicates,
     );
   }
 

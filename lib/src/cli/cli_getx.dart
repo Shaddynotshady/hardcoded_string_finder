@@ -13,9 +13,11 @@ Future<String> _readFileWithEncoding(File file) async {
     } catch (e2) {
       // Last resort: try system encoding
       try {
-        return await file.readAsString(encoding: Encoding.getByName(Platform.localeName) ?? utf8);
+        return await file.readAsString(
+            encoding: Encoding.getByName(Platform.localeName) ?? utf8);
       } catch (e3) {
-        throw Exception('Failed to read file with any encoding: ${file.path}. Error: $e3');
+        throw Exception(
+            'Failed to read file with any encoding: ${file.path}. Error: $e3');
       }
     }
   }
@@ -146,6 +148,17 @@ Future<void> runGetXGenerator() async {
     print('   📄 $outputDir/app_translations.dart');
     print('   🌍 ${result.filesCreated} files created');
     print('   🔑 ${result.totalKeys} total keys\n');
+
+    if (result.duplicates.isNotEmpty) {
+      print('⚠️  Warning: Duplicate keys found in CSV:');
+      for (final entry in result.duplicates.entries) {
+        final rows = entry.value.join(', ');
+        final lastRow = entry.value.last;
+        print(
+            '  - ${entry.key} appears in rows $rows (using value from row $lastRow)');
+      }
+      print('');
+    }
 
     print('━' * 50);
     print('Next steps:\n');

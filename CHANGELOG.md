@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.0 - 2026
+
+### 🐛 Bug Fixes & Enhancements
+
+- **Duplicate key detection and reporting** — Added edge case handling for duplicate keys in CSV files
+- **Duplicate key report** — Generates a report showing which keys appear multiple times and which one is used
+- Users can now identify and manually fix duplicate keys in their CSV files
+
+---
+
 ## 2.0.0 - 2026
 
 ### 🚀 Major Release — Localization File Generation
